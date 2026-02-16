@@ -1,0 +1,182 @@
+{
+  "project_name": "aitourguide",
+  "one_liner": "AI-powered landmark recognition app that provides historical facts and narrated tour guide content from photos, with an ad marketplace for landmark-relevant services.",
+  "users": ["End User", "Ad Provider", "Admin"],
+  "top_workflows": [
+    {
+      "name": "Landmark Discovery",
+      "steps": [
+        "User opens app to live camera view",
+        "User taps button or device shortcut to snap photo",
+        "AI identifies landmark(s) using vision model + optional GPS",
+        "Facts and short history displayed as text overlay",
+        "TTS narrates content in exciting tour guide tone",
+        "Relevant ads shown for identified landmark",
+        "User can share photo + guide summary to social media or continue with camera"
+      ]
+    },
+    {
+      "name": "Ad Submission and Moderation",
+      "steps": [
+        "Ad Provider logs in and creates ad tied to specific landmarks",
+        "Ad Provider submits ad for review",
+        "Admin sees pending ads in moderation queue",
+        "Admin approves or rejects ad with optional feedback",
+        "Approved ads shown to end users alongside landmark content"
+      ]
+    },
+    {
+      "name": "Content Quality Loop",
+      "steps": [
+        "End users rate and review guide content for a landmark",
+        "Admin reviews feedback and decides to regenerate content",
+        "Admin provides additional prompt guidance for regeneration",
+        "System regenerates content and TTS, bumps version",
+        "New version served to users who can rate the updated content"
+      ]
+    }
+  ],
+  "mvp_success_criteria": [
+    "User can snap a photo and get accurate landmark identification + facts within 10 seconds",
+    "Text-to-speech narration plays reliably in tour guide tone",
+    "Ad providers can submit ads tied to specific landmarks",
+    "Admins can review and approve/reject ads end-to-end",
+    "Social sharing works (photo + guide summary to platforms)",
+    "Multi-lingual narratives/facts/guides via locale parameter on LLM prompts"
+  ],
+  "goals": [
+    "Accurate, engaging landmark identification and narration",
+    "Fast cached responses after first identification",
+    "Functional ad marketplace with admin moderation",
+    "Multi-lingual guide content",
+    "Social sharing with deep platform integration"
+  ],
+  "non_goals": [
+    "Not a travel planning app (no itineraries, bookings, maps)",
+    "Not a social network (no profiles, followers, reviews beyond ratings)",
+    "Not real-time AR overlay (snapshot-based only)",
+    "Not offline landmark recognition (requires network)",
+    "No ad billing/payments in MVP"
+  ],
+  "constraints": {
+    "security_privacy": [
+      "Photos discarded after processing",
+      "GPS optionally collected for accuracy, not stored",
+      "No PII beyond basic auth"
+    ],
+    "latency_cost": [
+      "Under 10 seconds first run",
+      "Near-instant on cache hits",
+      "Cache guide content per landmark + locale",
+      "Cache TTS audio per content version",
+      "Premium models acceptable for now"
+    ],
+    "compliance": [
+      "No GDPR concerns for MVP",
+      "Basic security hygiene sufficient"
+    ]
+  },
+  "integrations": [
+    {
+      "name": "OpenAI GPT-4o Vision",
+      "direction": "outbound",
+      "criticality": "p0",
+      "notes": "Landmark identification from images + guide content generation"
+    },
+    {
+      "name": "OpenAI TTS",
+      "direction": "outbound",
+      "criticality": "p0",
+      "notes": "Text-to-speech narration in tour guide tone"
+    },
+    {
+      "name": "Social Media Platform APIs",
+      "direction": "outbound",
+      "criticality": "p1",
+      "notes": "Deep integration for sharing photo + guide summary (Instagram, X, Facebook)"
+    },
+    {
+      "name": "OAuth Providers (Google + Apple)",
+      "direction": "bidirectional",
+      "criticality": "p0",
+      "notes": "Authentication for all user roles"
+    }
+  ],
+  "core_entities": [
+    "Landmark",
+    "GuideContent",
+    "AudioNarration",
+    "Review",
+    "Ad",
+    "AdProvider",
+    "User",
+    "Admin"
+  ],
+  "source_of_truth": [
+    {
+      "domain": "Landmark identity",
+      "system": "LLM recognition cached in DB",
+      "notes": "LLM identifies, DB caches and serves"
+    },
+    {
+      "domain": "Guide content",
+      "system": "Database (versioned)",
+      "notes": "LLM generates, admin can regenerate, DB is serving authority"
+    },
+    {
+      "domain": "TTS audio",
+      "system": "Cached per content version",
+      "notes": "Regenerated when content version bumps"
+    },
+    {
+      "domain": "User ratings/reviews",
+      "system": "Database",
+      "notes": "Per content version"
+    },
+    {
+      "domain": "Ads and approval status",
+      "system": "Database",
+      "notes": "Provider submits, admin approves"
+    },
+    {
+      "domain": "User accounts",
+      "system": "OAuth + Database",
+      "notes": "OAuth for auth, DB for roles and profile"
+    }
+  ],
+  "open_decisions": [
+    {
+      "id": "OD-1",
+      "decision": "Social media platforms to support at launch",
+      "options": ["Instagram + X + Facebook", "Instagram + X only", "All major platforms"],
+      "recommendation": "Instagram + X + Facebook",
+      "why": "Covers the largest audience for travel content sharing"
+    },
+    {
+      "id": "OD-2",
+      "decision": "TTS voice selection and customization",
+      "options": ["Single voice", "Multiple voices per locale", "User-selectable voice"],
+      "recommendation": "Single voice per locale",
+      "why": "Simplest for MVP, can expand later"
+    }
+  ],
+  "chosen_stack": {
+    "language": "TypeScript",
+    "frontend": "React Native (Expo)",
+    "backend": "Node.js + Express",
+    "database": "PostgreSQL + Prisma",
+    "auth": "OAuth (Google + Apple Sign-In)",
+    "hosting": "Fly.io",
+    "monorepo_tooling": "npm workspaces",
+    "package_manager": "npm",
+    "test_stack": "Vitest (unit/contract/integration) + fixture-based evals + E2E"
+  },
+  "repo_conventions": {
+    "workspaces": true,
+    "typescript": true,
+    "strict_typing": true,
+    "logging_standard": "Structured JSON logs with correlation IDs",
+    "fixture_standard": "Manual fixtures with golden input/expected pairs"
+  }
+}
+

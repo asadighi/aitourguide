@@ -1,0 +1,53 @@
+{
+  "name": "@aitourguide/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "dev": "nodemon",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:milestone-a": "vitest run --grep milestone-a",
+    "test:milestone-b": "vitest run --grep milestone-b",
+    "test:milestone-c": "vitest run --grep milestone-c",
+    "test:milestone-d": "vitest run --grep milestone-d",
+    "test:milestone-e": "vitest run --grep milestone-e",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:studio": "prisma studio",
+    "db:generate": "prisma generate",
+    "db:reset": "prisma migrate reset --force",
+    "seed:prompts": "tsx src/scripts/seed-prompts.ts"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@aitourguide/shared": "*",
+    "@aitourguide/mcp": "*",
+    "@prisma/client": "^5.22.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "jsonwebtoken": "^9.0.3",
+    "pino": "^9.0.0",
+    "pino-pretty": "^11.0.0",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/supertest": "^6.0.0",
+    "@types/uuid": "^10.0.0",
+    "prisma": "^5.22.0",
+    "supertest": "^7.0.0",
+    "nodemon": "^3.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.0.0"
+  }
+}

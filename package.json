@@ -1,0 +1,34 @@
+{
+  "name": "aitourguide",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "predev": "npm run build --workspace=packages/shared && npm run build --workspace=packages/mcp",
+    "dev": "concurrently -n \"shared,mcp,backend,frontend\" -c \"gray,gray,green,blue\" --handle-input --default-input-target frontend \"npm run dev --workspace=packages/shared\" \"npm run dev --workspace=packages/mcp\" \"sleep 2 && npm run dev --workspace=packages/backend\" \"npm run dev --workspace=packages/frontend\"",
+    "dev:backend": "npm run build --workspace=packages/shared && npm run build --workspace=packages/mcp && npm run dev --workspace=packages/backend",
+    "dev:frontend": "npm run dev --workspace=packages/frontend",
+    "build": "npm run build --workspace=packages/shared && npm run build --workspace=packages/mcp && npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:milestone-a": "npm run test:milestone-a --workspace=packages/backend",
+    "test:milestone-b": "npm run test:milestone-b --workspace=packages/backend",
+    "test:milestone-c": "npm run test:milestone-c --workspace=packages/backend",
+    "test:milestone-d": "npm run test:milestone-d --workspace=packages/backend",
+    "test:milestone-e": "npm run test:milestone-e --workspace=packages/backend",
+    "test:fixtures": "npm run test:fixtures --workspace=packages/mcp",
+    "typecheck": "tsc --build",
+    "lint": "eslint .",
+    "seed:prompts": "npm run seed:prompts --workspace=packages/backend"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "concurrently": "^9.0.0",
+    "eslint": "^9.0.0",
+    "nodemon": "^3.1.11",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.0.0"
+  }
+}

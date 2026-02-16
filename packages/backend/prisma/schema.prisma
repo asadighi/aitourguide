@@ -1,0 +1,216 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────
+
+enum UserRole {
+  end_user
+  ad_provider
+  admin
+}
+
+enum OAuthProvider {
+  google
+  apple
+}
+
+enum LandmarkCategory {
+  monument
+  building
+  natural
+  religious
+  historical
+  cultural
+  other
+}
+
+enum AdStatus {
+  pending
+  approved
+  rejected
+}
+
+// ─────────────────────────────────────────────
+// User
+// ─────────────────────────────────────────────
+
+model User {
+  id             String        @id @default(uuid())
+  email          String        @unique
+  name           String
+  role           UserRole      @default(end_user)
+  oauth_provider OAuthProvider
+  oauth_id       String
+  locale         String        @default("en")
+  created_at     DateTime      @default(now())
+  updated_at     DateTime      @updatedAt
+
+  // Relations
+  reviews        Review[]
+  ads            Ad[]          @relation("AdProvider")
+  reviewed_ads   Ad[]          @relation("AdReviewer")
+
+  @@unique([oauth_provider, oauth_id])
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────
+// Landmark
+// ─────────────────────────────────────────────
+
+model Landmark {
+  id                  String           @id @default(uuid())
+  name                String
+  city                String?
+  country             String?
+  lat                 Float?
+  lng                 Float?
+  category            LandmarkCategory @default(other)
+  first_identified_at DateTime         @default(now())
+  created_at          DateTime         @default(now())
+  updated_at          DateTime         @updatedAt
+
+  // Relations
+  guide_contents      GuideContent[]
+  ad_landmarks        AdLandmark[]
+
+  @@map("landmarks")
+}
+
+// ─────────────────────────────────────────────
+// GuideContent (versioned per landmark + locale)
+// ─────────────────────────────────────────────
+
+model GuideContent {
+  id               String    @id @default(uuid())
+  landmark_id      String
+  locale           String    @default("en")
+  version          Int       @default(1)
+  title            String
+  summary          String
+  facts            Json      // Array of { heading: string, body: string }
+  narration_script String
+  fun_fact         String?
+  admin_prompt     String?   // Additional prompt used during regeneration
+  is_active        Boolean   @default(true)
+  created_at       DateTime  @default(now())
+
+  // Relations
+  landmark         Landmark        @relation(fields: [landmark_id], references: [id], onDelete: Cascade)
+  audio_narration  AudioNarration?
+  reviews          Review[]
+
+  @@unique([landmark_id, locale, version])
+  // Ensures fast lookups for active content
+  @@index([landmark_id, locale, is_active])
+  @@map("guide_contents")
+}
+
+// ─────────────────────────────────────────────
+// AudioNarration (TTS cache per GuideContent)
+// ─────────────────────────────────────────────
+
+model AudioNarration {
+  id               String   @id @default(uuid())
+  guide_content_id String   @unique
+  file_path        String
+  duration_ms      Int?
+  voice_id         String   @default("nova")
+  created_at       DateTime @default(now())
+
+  // Relations
+  guide_content    GuideContent @relation(fields: [guide_content_id], references: [id], onDelete: Cascade)
+
+  @@map("audio_narrations")
+}
+
+// ─────────────────────────────────────────────
+// Ad
+// ─────────────────────────────────────────────
+
+model Ad {
+  id             String   @id @default(uuid())
+  provider_id    String
+  title          String
+  body           String
+  image_url      String?
+  link_url       String
+  status         AdStatus @default(pending)
+  admin_feedback String?
+  reviewed_by    String?
+  reviewed_at    DateTime?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  // Relations
+  provider       User         @relation("AdProvider", fields: [provider_id], references: [id])
+  reviewer       User?        @relation("AdReviewer", fields: [reviewed_by], references: [id])
+  ad_landmarks   AdLandmark[]
+
+  @@map("ads")
+}
+
+// ─────────────────────────────────────────────
+// AdLandmark (join table: Ads ↔ Landmarks)
+// ─────────────────────────────────────────────
+
+model AdLandmark {
+  ad_id       String
+  landmark_id String
+
+  ad          Ad       @relation(fields: [ad_id], references: [id], onDelete: Cascade)
+  landmark    Landmark @relation(fields: [landmark_id], references: [id], onDelete: Cascade)
+
+  @@id([ad_id, landmark_id])
+  @@map("ad_landmarks")
+}
+
+// ─────────────────────────────────────────────
+// Review (user feedback on GuideContent)
+// ─────────────────────────────────────────────
+
+model Review {
+  id               String   @id @default(uuid())
+  user_id          String
+  guide_content_id String
+  rating           Int      // 1-5 stars
+  text             String?
+  created_at       DateTime @default(now())
+
+  // Relations
+  user             User         @relation(fields: [user_id], references: [id])
+  guide_content    GuideContent @relation(fields: [guide_content_id], references: [id], onDelete: Cascade)
+
+  // One review per user per guide content version
+  @@unique([user_id, guide_content_id])
+  @@map("reviews")
+}
+
+// ─────────────────────────────────────────────
+// Prompt (runtime prompt registry, seeded from git files)
+// ─────────────────────────────────────────────
+
+model Prompt {
+  id          String   @id @default(uuid())
+  prompt_id   String   // e.g. "landmark_identify"
+  version     String   // e.g. "1.0.0"
+  content     String   // Full markdown prompt content
+  schema_type String   // Expected output schema name
+  is_active   Boolean  @default(false)
+  created_at  DateTime @default(now())
+
+  @@unique([prompt_id, version])
+  @@index([prompt_id, is_active])
+  @@map("prompts")
+}

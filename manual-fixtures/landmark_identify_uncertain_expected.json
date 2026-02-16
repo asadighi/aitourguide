@@ -1,0 +1,36 @@
+{
+  "schema": "landmark_identification.v1",
+  "landmarks": [
+    {
+      "name": "Tower Bridge",
+      "confidence": 0.55,
+      "location": {
+        "city": "London",
+        "country": "United Kingdom",
+        "coordinates": {
+          "lat": 51.5055,
+          "lng": -0.0754
+        }
+      },
+      "category": "building",
+      "brief_description": "Historic combined bascule and suspension bridge over the Thames"
+    },
+    {
+      "name": "London Bridge",
+      "confidence": 0.3,
+      "location": {
+        "city": "London",
+        "country": "United Kingdom",
+        "coordinates": {
+          "lat": 51.5079,
+          "lng": -0.0877
+        }
+      },
+      "category": "building",
+      "brief_description": "Bridge crossing the River Thames between the City of London and Southwark"
+    }
+  ],
+  "needs_clarification": true,
+  "clarification_message": "I found two possible matches. Which landmark did you photograph?"
+}
+

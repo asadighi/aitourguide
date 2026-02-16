@@ -1,0 +1,25 @@
+{
+  "schema": "guide_content.v1",
+  "landmark_name": "Eiffel Tower",
+  "locale": "en",
+  "title": "The Eiffel Tower: Iron Lady of Paris",
+  "summary": "The Eiffel Tower is a wrought-iron lattice tower on the Champ de Mars in Paris, France. Built between 1887 and 1889 as the centerpiece of the 1889 World's Fair, it has become the most iconic symbol of France and one of the most recognizable structures in the world.",
+  "facts": [
+    {
+      "heading": "Construction",
+      "body": "The tower was built by Gustave Eiffel's engineering company between 1887 and 1889. It took 2 years, 2 months, and 5 days to complete, using over 18,000 iron parts and 2.5 million rivets."
+    },
+    {
+      "heading": "Height",
+      "body": "Standing at 330 meters tall including its antenna, the Eiffel Tower was the world's tallest man-made structure for 41 years until the Chrysler Building in New York surpassed it in 1930."
+    },
+    {
+      "heading": "Controversial Beginnings",
+      "body": "Many prominent Parisians initially opposed the tower, calling it an eyesore. A group of artists and intellectuals signed a petition calling it 'a disgrace to the city.' Today it receives nearly 7 million visitors annually."
+    }
+  ],
+  "narration_script": "Welcome to the magnificent Eiffel Tower! Standing proudly at three hundred and thirty meters tall, this iron beauty has been watching over Paris since 1889. Can you believe it was built in just over two years? Gustave Eiffel and his team used over eighteen thousand individual iron parts and two and a half million rivets to create what would become the most iconic symbol of France. And here's the really fascinating part — many Parisians absolutely hated it when it was first built! A group of famous artists even signed a petition calling it a disgrace to the city. Well, I think those seven million annual visitors would strongly disagree!",
+  "fun_fact": "The Eiffel Tower was originally meant to be dismantled after 20 years, but it was saved because it proved useful as a radio transmission tower!",
+  "confidence_note": null
+}
+

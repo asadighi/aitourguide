@@ -1,0 +1,22 @@
+{
+  "schema": "landmark_identification.v1",
+  "landmarks": [
+    {
+      "name": "Eiffel Tower",
+      "confidence": 0.95,
+      "location": {
+        "city": "Paris",
+        "country": "France",
+        "coordinates": {
+          "lat": 48.8584,
+          "lng": 2.2945
+        }
+      },
+      "category": "monument",
+      "brief_description": "Iconic wrought-iron lattice tower on the Champ de Mars in Paris"
+    }
+  ],
+  "needs_clarification": false,
+  "clarification_message": null
+}
+

@@ -1,0 +1,27 @@
+{
+  "name": "@aitourguide/mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch --preserveWatchOutput",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:fixtures": "vitest run --grep fixtures",
+    "seed:prompts": "tsx src/scripts/seed-prompts.ts"
+  },
+  "dependencies": {
+    "@aitourguide/shared": "*",
+    "openai": "^4.70.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "tsx": "^4.19.0",
+    "vitest": "^2.0.0"
+  }
+}
+

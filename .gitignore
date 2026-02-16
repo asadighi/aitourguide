@@ -1,0 +1,40 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+build/
+.expo/
+
+# env files
+.env
+.env.local
+.env.production
+
+# logs
+logs/
+*.log
+
+# database
+*.db
+prisma/migrations/**/migration_lock.toml
+
+# os
+.DS_Store
+Thumbs.db
+
+# ide
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# test
+coverage/
+
+# audio cache
+audio-cache/
+
+# generated
+*.tsbuildinfo
+
