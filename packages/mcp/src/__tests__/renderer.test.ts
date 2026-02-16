@@ -35,12 +35,12 @@ describe("[milestone-a] renderPromptFromRegistry", () => {
     });
 
     expect(result).not.toBeNull();
-    expect(result!.version).toBe("1.0.0");
+    expect(result!.version).toBe("1.1.0");
     expect(result!.schemaType).toBe("guide_content.v1");
 
     // Should contain both fragments
     expect(result!.rendered).toContain("Never generate politically biased");
-    expect(result!.rendered).toContain("enthusiastic, knowledgeable tour guide tone");
+    expect(result!.rendered).toContain("knowledgeable, conversational tour guide tone");
 
     // Should contain variable values
     expect(result!.rendered).toContain("Colosseum");

@@ -21,7 +21,12 @@
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
     "db:reset": "prisma migrate reset --force",
-    "seed:prompts": "tsx src/scripts/seed-prompts.ts"
+    "seed:prompts": "tsx src/scripts/seed-prompts.ts",
+    "cache:reset": "tsx src/scripts/reset-cache.ts",
+    "cache:reset:stale": "tsx src/scripts/reset-cache.ts --stale",
+    "cache:reset:audio": "tsx src/scripts/reset-cache.ts --audio",
+    "cache:reset:guides": "tsx src/scripts/reset-cache.ts --guides",
+    "cache:reset:dry": "tsx src/scripts/reset-cache.ts --dry-run"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

@@ -106,14 +106,10 @@ describe("[milestone-b] validateTTSInput", () => {
     ).toThrow('Invalid TTS voice "invalid-voice"');
   });
 
-  it("accepts all valid voices", () => {
+  it("accepts all valid voices (classic + new)", () => {
     for (const voice of [
-      "alloy",
-      "echo",
-      "fable",
-      "onyx",
-      "nova",
-      "shimmer",
+      "alloy", "ash", "ballad", "coral", "echo",
+      "fable", "nova", "onyx", "sage", "shimmer",
     ]) {
       expect(() =>
         validateTTSInput({ text: "test", voice })
@@ -134,6 +130,9 @@ describe("[milestone-b] validateTTSInput", () => {
     expect(() =>
       validateTTSInput({ text: "test", model: "tts-1-hd" })
     ).not.toThrow();
+    expect(() =>
+      validateTTSInput({ text: "test", model: "gpt-4o-mini-tts" })
+    ).not.toThrow();
   });
 });
 
@@ -147,6 +146,7 @@ describe("[milestone-b] buildTTSRequest", () => {
       voice: undefined,
       model: undefined,
       speed: undefined,
+      instructions: undefined,
     });
   });
 
@@ -162,6 +162,24 @@ describe("[milestone-b] buildTTSRequest", () => {
       voice: "nova",
       model: "tts-1-hd",
       speed: 1.1,
+      instructions: undefined,
+    });
+  });
+
+  it("builds request with instructions for gpt-4o-mini-tts", () => {
+    const request = buildTTSRequest({
+      text: "به برج ایفل خوش آمدید!",
+      voice: "nova",
+      model: "gpt-4o-mini-tts",
+      speed: 1.0,
+      instructions: "Speak in Iranian Persian with a Tehran accent.",
+    });
+    expect(request).toEqual({
+      text: "به برج ایفل خوش آمدید!",
+      voice: "nova",
+      model: "gpt-4o-mini-tts",
+      speed: 1.0,
+      instructions: "Speak in Iranian Persian with a Tehran accent.",
     });
   });
 
@@ -293,6 +311,39 @@ describe("[milestone-b] generateTTS (contract)", () => {
     });
 
     expect(result.voice).toBe("echo");
+  });
+
+  it("passes instructions to provider when provided", async () => {
+    let capturedInstructions: string | undefined;
+    const provider: LLMProvider = {
+      vision: async (): Promise<LLMResponse> => ({
+        content: "",
+        model: "mock",
+        latencyMs: 0,
+      }),
+      complete: async (): Promise<LLMResponse> => ({
+        content: "",
+        model: "mock",
+        latencyMs: 0,
+      }),
+      tts: async (params): Promise<TTSResponse> => {
+        capturedInstructions = params.instructions;
+        return {
+          audioBuffer: Buffer.from("audio"),
+          model: params.model || "gpt-4o-mini-tts",
+          latencyMs: 100,
+        };
+      },
+    };
+
+    await generateTTS(provider, {
+      text: "Test narration in Farsi",
+      model: "gpt-4o-mini-tts",
+      voice: "nova",
+      instructions: "Speak with a Tehran Iranian accent.",
+    });
+
+    expect(capturedInstructions).toBe("Speak with a Tehran Iranian accent.");
   });
 
   it("rejects empty text before calling provider", async () => {

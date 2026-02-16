@@ -105,19 +105,31 @@ export class OpenAIAdapter implements LLMProvider {
 
   async tts(params: TTSRequest): Promise<TTSResponse> {
     const start = Date.now();
+    const model = params.model || this.defaultTTSModel;
 
-    const response = await this.client.audio.speech.create({
-      model: params.model || this.defaultTTSModel,
-      voice: (params.voice || this.defaultVoice) as "alloy",
+    // Build base request
+    const request: Record<string, unknown> = {
+      model,
+      voice: params.voice || this.defaultVoice,
       input: params.text,
       speed: params.speed ?? this.defaultSpeed,
-    });
+    };
+
+    // gpt-4o-mini-tts supports an `instructions` field for accent/style control.
+    // tts-1 and tts-1-hd ignore it, so we only include it for supported models.
+    if (params.instructions && model.includes("gpt-4o")) {
+      request.instructions = params.instructions;
+    }
+
+    const response = await this.client.audio.speech.create(
+      request as unknown as Parameters<typeof this.client.audio.speech.create>[0]
+    );
 
     const audioBuffer = Buffer.from(await response.arrayBuffer());
 
     return {
       audioBuffer,
-      model: params.model || this.defaultTTSModel,
+      model,
       latencyMs: Date.now() - start,
     };
   }

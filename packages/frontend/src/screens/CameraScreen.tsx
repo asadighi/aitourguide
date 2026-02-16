@@ -7,23 +7,38 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  Animated,
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Location from "expo-location";
 import * as ImagePicker from "expo-image-picker";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
-import { api } from "../api/client";
+import { useBackgroundSnapContext } from "../queue/BackgroundSnapContext";
+import { useSnapQueue } from "../queue/SnapQueueContext";
 
 interface CameraScreenProps {
-  onResult: (result: Awaited<ReturnType<typeof api.snap>>) => void;
-  onClarification: (result: Awaited<ReturnType<typeof api.snap>>) => void;
+  locale: string;
+  onOpenLocalePicker: () => void;
+  localeFlag: string;
+  onOpenPlaylist: () => void;
 }
 
-export function CameraScreen({ onResult, onClarification }: CameraScreenProps) {
+export function CameraScreen({
+  locale,
+  onOpenLocalePicker,
+  localeFlag,
+  onOpenPlaylist,
+}: CameraScreenProps) {
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
-  const [isProcessing, setIsProcessing] = useState(false);
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
+
+  // Queue integration (uses global context — processing continues when CameraScreen unmounts)
+  const { dispatchSnap } = useBackgroundSnapContext();
+  const { counts } = useSnapQueue();
+
+  // Flash animation for snap feedback
+  const flashOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     (async () => {
@@ -32,103 +47,110 @@ export function CameraScreen({ onResult, onClarification }: CameraScreenProps) {
     })();
   }, []);
 
-  // --- Shared logic: get GPS, call API, route result ---
-  const processImage = async (base64: string) => {
-    // Get GPS if available
-    let gps: { lat: number; lng: number } | undefined;
-    if (hasLocationPermission) {
-      try {
-        const location = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
-        gps = {
-          lat: location.coords.latitude,
-          lng: location.coords.longitude,
-        };
-      } catch {
-        // GPS is optional, continue without it
-      }
-    }
-
-    // Call snap API
-    const result = await api.snap(base64, gps, "en");
-
-    if (result.landmark.needs_clarification) {
-      onClarification(result);
-    } else {
-      onResult(result);
+  // --- Get current GPS (best-effort) ---
+  const getGps = async (): Promise<
+    { lat: number; lng: number } | undefined
+  > => {
+    if (!hasLocationPermission) return undefined;
+    try {
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      return {
+        lat: location.coords.latitude,
+        lng: location.coords.longitude,
+      };
+    } catch {
+      return undefined;
     }
   };
 
-  // --- Camera snap ---
-  const handleSnap = async () => {
-    if (isProcessing || !cameraRef.current) return;
+  // --- Brief flash to confirm a snap was queued ---
+  const showFlash = () => {
+    flashOpacity.setValue(0.6);
+    Animated.timing(flashOpacity, {
+      toValue: 0,
+      duration: 250,
+      useNativeDriver: true,
+    }).start();
+  };
 
-    setIsProcessing(true);
+  // --- Resize image to reduce upload size (max 1024px on longest side) ---
+  const resizeForUpload = async (uri: string): Promise<string | null> => {
     try {
+      const resized = await manipulateAsync(
+        uri,
+        [{ resize: { width: 1024 } }],
+        { compress: 0.6, format: SaveFormat.JPEG, base64: true }
+      );
+      return resized.base64 ?? null;
+    } catch {
+      return null;
+    }
+  };
+
+  // --- Camera snap (non-blocking) ---
+  const handleSnap = async () => {
+    if (!cameraRef.current) return;
+
+    try {
+      // Capture at low quality — we'll resize anyway
       const photo = await cameraRef.current.takePictureAsync({
-        base64: true,
-        quality: 0.7,
+        quality: 0.5,
       });
 
-      if (!photo?.base64) {
+      if (!photo?.uri) {
         Alert.alert("Error", "Failed to capture photo");
         return;
       }
 
-      await processImage(photo.base64);
+      // Resize to 1024px wide, compress to 60% — typically ~100-300KB base64
+      const base64 = await resizeForUpload(photo.uri);
+      if (!base64) {
+        Alert.alert("Error", "Failed to process photo");
+        return;
+      }
+
+      const gps = await getGps();
+      dispatchSnap(base64, locale, gps);
+      showFlash();
     } catch (err) {
       Alert.alert(
-        "Identification Failed",
-        err instanceof Error
-          ? err.message
-          : "Failed to identify landmark. Please try again."
+        "Snap Failed",
+        err instanceof Error ? err.message : "Failed to capture photo."
       );
-    } finally {
-      setIsProcessing(false);
     }
   };
 
-  // --- Pick image from gallery (for simulator / dev testing) ---
+  // --- Pick image from gallery (non-blocking) ---
   const handlePickImage = async () => {
-    if (isProcessing) return;
-
     try {
-      // Don't request base64 or quality from the picker — iOS simulator
-      // HEIC photos fail with "Cannot load representation of type public.jpeg".
-      // Instead, get the URI and use expo-image-manipulator for the conversion.
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"],
       });
 
       if (result.canceled || !result.assets[0]?.uri) return;
 
-      setIsProcessing(true);
-
-      // Use image-manipulator to convert HEIC→JPEG and get base64
-      // This handles the native format conversion properly on iOS
-      const manipulated = await manipulateAsync(
-        result.assets[0].uri,
-        [], // no transforms needed
-        { compress: 0.7, format: SaveFormat.JPEG, base64: true }
-      );
-
-      if (!manipulated.base64) {
+      // Convert HEIC→JPEG, resize to 1024px, and get base64
+      const base64 = await resizeForUpload(result.assets[0].uri);
+      if (!base64) {
         throw new Error("Failed to read picked image");
       }
 
-      await processImage(manipulated.base64);
+      const gps = await getGps();
+      dispatchSnap(base64, locale, gps);
+      showFlash();
     } catch (err) {
       Alert.alert(
-        "Identification Failed",
-        err instanceof Error
-          ? err.message
-          : "Failed to identify landmark. Please try again."
+        "Pick Failed",
+        err instanceof Error ? err.message : "Failed to pick image."
       );
-    } finally {
-      setIsProcessing(false);
     }
   };
+
+  // --- Queue badge: shows total items, with color based on status ---
+  const badgeCount = counts.total;
+  const badgeHasProcessing = counts.processing > 0 || counts.pending > 0;
 
   // --- Permission screens ---
   if (!permission) {
@@ -163,42 +185,84 @@ export function CameraScreen({ onResult, onClarification }: CameraScreenProps) {
     <View style={styles.container}>
       <CameraView ref={cameraRef} style={styles.camera} facing="back">
         <View style={styles.overlay}>
+          {/* Flash overlay for snap feedback */}
+          <Animated.View
+            style={[styles.flashOverlay, { opacity: flashOpacity }]}
+            pointerEvents="none"
+          />
+
           <View style={styles.topBar}>
             <Text style={styles.title}>🏛️ AI Tour Guide</Text>
+
+            {/* Locale button */}
+            <TouchableOpacity
+              style={styles.localeButton}
+              onPress={onOpenLocalePicker}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.localeButtonText}>{localeFlag}</Text>
+            </TouchableOpacity>
+
+            {/* Queue badge */}
+            {badgeCount > 0 && (
+              <TouchableOpacity
+                style={styles.queueBadgeButton}
+                onPress={onOpenPlaylist}
+                activeOpacity={0.7}
+              >
+                <View
+                  style={[
+                    styles.queueBadge,
+                    badgeHasProcessing && styles.queueBadgeProcessing,
+                  ]}
+                >
+                  <Text style={styles.queueBadgeText}>{badgeCount}</Text>
+                </View>
+                <Text style={styles.queueBadgeLabel}>
+                  {badgeHasProcessing ? "⏳" : "✅"}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           <View style={styles.bottomBar}>
-            {isProcessing ? (
-              <View style={styles.processingContainer}>
-                <ActivityIndicator size="large" color="#fff" />
-                <Text style={styles.processingText}>
-                  Identifying landmark...
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.buttonRow}>
-                {/* Gallery picker — useful on simulator or when you want a saved photo */}
+            <View style={styles.buttonRow}>
+              {/* Gallery picker */}
+              <TouchableOpacity
+                style={styles.galleryCircle}
+                onPress={handlePickImage}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.galleryEmoji}>🖼️</Text>
+              </TouchableOpacity>
+
+              {/* Main shutter */}
+              <TouchableOpacity
+                style={styles.snapButton}
+                onPress={handleSnap}
+                activeOpacity={0.7}
+              >
+                <View style={styles.snapButtonInner} />
+              </TouchableOpacity>
+
+              {/* Playlist button (or spacer) */}
+              {badgeCount > 0 ? (
                 <TouchableOpacity
-                  style={styles.galleryCircle}
-                  onPress={handlePickImage}
+                  style={styles.playlistCircle}
+                  onPress={onOpenPlaylist}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.galleryEmoji}>🖼️</Text>
+                  <Text style={styles.playlistEmoji}>📋</Text>
+                  {badgeCount > 0 && (
+                    <View style={styles.miniCountBadge}>
+                      <Text style={styles.miniCountText}>{badgeCount}</Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
-
-                {/* Main shutter */}
-                <TouchableOpacity
-                  style={styles.snapButton}
-                  onPress={handleSnap}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.snapButtonInner} />
-                </TouchableOpacity>
-
-                {/* Spacer to keep shutter centered */}
+              ) : (
                 <View style={styles.galleryCircle} />
-              </View>
-            )}
+              )}
+            </View>
           </View>
         </View>
       </CameraView>
@@ -221,9 +285,16 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "space-between",
   },
+  flashOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#fff",
+    zIndex: 10,
+  },
   topBar: {
     paddingTop: 60,
     paddingHorizontal: 20,
+    flexDirection: "row",
+    justifyContent: "center",
     alignItems: "center",
   },
   title: {
@@ -233,6 +304,52 @@ const styles = StyleSheet.create({
     textShadowColor: "rgba(0,0,0,0.8)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
+  },
+  localeButton: {
+    position: "absolute",
+    right: 20,
+    top: 58,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  localeButtonText: {
+    fontSize: 22,
+  },
+  queueBadgeButton: {
+    position: "absolute",
+    left: 20,
+    top: 58,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.45)",
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  queueBadge: {
+    backgroundColor: "#4caf50",
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 4,
+  },
+  queueBadgeProcessing: {
+    backgroundColor: "#ff9800",
+  },
+  queueBadgeText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  queueBadgeLabel: {
+    fontSize: 14,
+    marginLeft: 4,
   },
   bottomBar: {
     paddingBottom: 40,
@@ -271,6 +388,34 @@ const styles = StyleSheet.create({
   },
   galleryEmoji: {
     fontSize: 24,
+  },
+  playlistCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "rgba(255,255,255,0.25)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  playlistEmoji: {
+    fontSize: 22,
+  },
+  miniCountBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    backgroundColor: "#e94560",
+    borderRadius: 9,
+    minWidth: 18,
+    height: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 3,
+  },
+  miniCountText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "bold",
   },
   processingContainer: {
     alignItems: "center",

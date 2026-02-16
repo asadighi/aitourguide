@@ -98,7 +98,8 @@ async function tryRefreshTokens(): Promise<boolean> {
 async function request<T>(
   path: string,
   options: RequestInit = {},
-  _isRetry = false
+  _isRetry = false,
+  timeoutMs = 60_000
 ): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -109,10 +110,24 @@ async function request<T>(
     headers["Authorization"] = `Bearer ${accessToken}`;
   }
 
-  const res = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers,
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
+  } catch (err: unknown) {
+    clearTimeout(timeout);
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error(`Request to ${path} timed out after ${timeoutMs / 1000}s`);
+    }
+    throw err;
+  }
+  clearTimeout(timeout);
 
   // On 401, try to refresh and retry once
   if (res.status === 401 && !_isRetry) {

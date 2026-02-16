@@ -6,7 +6,8 @@ dist/
 build/
 .expo/
 
-# env files
+# env files (root .env is the single source of truth;
+# packages/backend/.env and packages/frontend/.env are symlinks to it)
 .env
 .env.local
 .env.production

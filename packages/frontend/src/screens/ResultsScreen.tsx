@@ -9,24 +9,118 @@ import {
 } from "react-native";
 import type { api } from "../api/client";
 import { AudioPlayer } from "../components/AudioPlayer";
+import { usePlaylistPlayerContext } from "../queue/PlaylistPlayerContext";
 
 type SnapResult = Awaited<ReturnType<typeof api.snap>>;
 
 interface ResultsScreenProps {
   result: SnapResult;
+  locale: string;
+  localeLabel: string;
   onBack: () => void;
   onShare: () => void;
+  onOpenLocalePicker: () => void;
+  /** Where the user navigated from — controls back button label + nav controls. */
+  source?: "camera" | "playlist";
+  /** Whether there is a previous queue item to navigate to. */
+  hasPrevItem?: boolean;
+  /** Whether there is a next queue item to navigate to. */
+  hasNextItem?: boolean;
+  /** Navigate to the previous queue item. */
+  onPrevItem?: () => void;
+  /** Navigate to the next queue item. */
+  onNextItem?: () => void;
 }
 
-export function ResultsScreen({ result, onBack, onShare }: ResultsScreenProps) {
+export function ResultsScreen({
+  result,
+  locale,
+  localeLabel,
+  onBack,
+  onShare,
+  onOpenLocalePicker,
+  source = "camera",
+  hasPrevItem = false,
+  hasNextItem = false,
+  onPrevItem,
+  onNextItem,
+}: ResultsScreenProps) {
   const landmark = result.landmark.landmarks[0];
   const guide = result.guide;
+  const isFromPlaylist = source === "playlist";
+  const player = usePlaylistPlayerContext();
+
+  // When the standalone AudioPlayer starts playing, pause the global playlist player
+  const handleStandaloneWillPlay = () => {
+    if (player.phase === "narration" || player.phase === "intro") {
+      player.pause();
+    }
+  };
+
+  // When the global player is actively playing, pause the standalone player
+  const globalPlayerIsPlaying =
+    player.phase === "narration" || player.phase === "intro";
 
   return (
     <View style={styles.container}>
+      {/* ── Top navigation bar (when from playlist) ── */}
+      {isFromPlaylist && (
+        <View style={styles.topNav}>
+          <TouchableOpacity
+            style={styles.topNavBack}
+            onPress={onBack}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.topNavBackText}>← Playlist</Text>
+          </TouchableOpacity>
+
+          <View style={styles.topNavItemControls}>
+            <TouchableOpacity
+              style={[
+                styles.topNavArrow,
+                !hasPrevItem && styles.topNavArrowDisabled,
+              ]}
+              onPress={onPrevItem}
+              disabled={!hasPrevItem}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.topNavArrowText,
+                  !hasPrevItem && styles.topNavArrowTextDisabled,
+                ]}
+              >
+                ◀ Prev
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.topNavArrow,
+                !hasNextItem && styles.topNavArrowDisabled,
+              ]}
+              onPress={onNextItem}
+              disabled={!hasNextItem}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.topNavArrowText,
+                  !hasNextItem && styles.topNavArrowTextDisabled,
+                ]}
+              >
+                Next ▶
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          isFromPlaylist && styles.scrollContentWithNav,
+        ]}
       >
         {/* Header */}
         <View style={styles.header}>
@@ -44,6 +138,13 @@ export function ResultsScreen({ result, onBack, onShare }: ResultsScreenProps) {
                 🎯 {Math.round(landmark.confidence * 100)}% match
               </Text>
             </View>
+            <TouchableOpacity
+              style={[styles.badge, styles.localeBadge]}
+              onPress={onOpenLocalePicker}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.badgeText}>{localeLabel}</Text>
+            </TouchableOpacity>
             {result.cached && (
               <View style={[styles.badge, styles.cachedBadge]}>
                 <Text style={styles.badgeText}>⚡ Cached</Text>
@@ -89,12 +190,18 @@ export function ResultsScreen({ result, onBack, onShare }: ResultsScreenProps) {
               </View>
             )}
 
-            {/* TTS Audio Narration */}
+            {/* TTS Audio Narration —
+                When viewed from the playlist, the global playlist player manages
+                audio playback, so don't auto-play the standalone player (it would
+                create a competing audio stream). Tapping play on the standalone
+                player will pause the global player via onWillPlay. */}
             {result.audio ? (
               <AudioPlayer
                 audioUrl={result.audio.url}
                 voice={result.audio.voice}
-                autoPlay={true}
+                autoPlay={!isFromPlaylist}
+                onWillPlay={handleStandaloneWillPlay}
+                externalPaused={globalPlayerIsPlaying}
               />
             ) : (
               <View style={styles.narrationCard}>
@@ -134,7 +241,9 @@ export function ResultsScreen({ result, onBack, onShare }: ResultsScreenProps) {
           style={styles.actionButton}
           onPress={onBack}
         >
-          <Text style={styles.actionButtonText}>📷 New Snap</Text>
+          <Text style={styles.actionButtonText}>
+            {isFromPlaylist ? "← Playlist" : "📷 New Snap"}
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.actionButton, styles.shareButton]}
@@ -152,6 +261,51 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#1a1a2e",
   },
+
+  // ── Top navigation (playlist mode) ──
+  topNav: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingTop: 56,
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    backgroundColor: "#16213e",
+    borderBottomWidth: 1,
+    borderBottomColor: "#0f3460",
+  },
+  topNavBack: {
+    paddingVertical: 6,
+    paddingRight: 12,
+  },
+  topNavBackText: {
+    color: "#e94560",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  topNavItemControls: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  topNavArrow: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: "#0f3460",
+    borderRadius: 8,
+  },
+  topNavArrowDisabled: {
+    opacity: 0.3,
+  },
+  topNavArrowText: {
+    color: "#ccc",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  topNavArrowTextDisabled: {
+    color: "#555",
+  },
+
+  // ── Scroll ──
   scroll: {
     flex: 1,
   },
@@ -160,6 +314,11 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 100,
   },
+  scrollContentWithNav: {
+    paddingTop: 16, // Less top padding when nav bar is shown
+  },
+
+  // ── Header ──
   header: {
     marginBottom: 20,
   },
@@ -180,6 +339,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
+  },
+  localeBadge: {
+    backgroundColor: "#0f3460",
+    borderWidth: 1,
+    borderColor: "#e94560",
   },
   cachedBadge: {
     backgroundColor: "#0f3460",
@@ -331,4 +495,3 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
-

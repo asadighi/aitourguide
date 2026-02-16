@@ -6,10 +6,10 @@
 {
   "milestone_id": "b",
   "milestone_name": "TTS Narration + Multi-Lingual",
-  "status": "in-progress",
-  "current_focus_task_id": "B-2",
+  "status": "done",
+  "current_focus_task_id": null,
   "started_at": "2026-02-16",
-  "completed_at": null,
+  "completed_at": "2026-02-16",
   "definition_of_done": [
     "TTS plays reliably after landmark identification",
     "Same content version serves cached audio without re-generation",
@@ -19,16 +19,20 @@
   "test_gate": {
     "required": true,
     "suite_name": "milestone-b",
-    "last_run_at": null,
-    "last_result": null
+    "last_run_at": "2026-02-16",
+    "last_result": "pass (40 milestone-b tests: 17 backend + 23 mcp; 11 frontend locale tests)"
   },
-  "notes": []
+  "notes": [
+    "All 5 tasks (B-1 through B-5) completed in a single session",
+    "11 supported locales including Farsi",
+    "Locale preference persisted via expo-secure-store"
+  ]
 }
 ```
 
 ## current focus
 
-B-2: Implement TTS audio caching per content version
+Milestone complete ✅
 
 ---
 
@@ -108,7 +112,7 @@ B-2: Implement TTS audio caching per content version
 {
   "task_id": "B-3",
   "title": "Implement multi-lingual content generation with locale caching",
-  "status": "todo",
+  "status": "done",
   "priority": "high",
   "estimated_sessions": 1,
   "depends_on": [],
@@ -174,7 +178,7 @@ B-2: Implement TTS audio caching per content version
 {
   "task_id": "B-5",
   "title": "Add language/locale selector to the app",
-  "status": "todo",
+  "status": "done",
   "priority": "medium",
   "estimated_sessions": 1,
   "depends_on": ["B-3"],

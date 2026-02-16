@@ -103,6 +103,7 @@ model GuideContent {
   narration_script String
   fun_fact         String?
   admin_prompt     String?   // Additional prompt used during regeneration
+  prompt_version   String?   // Prompt version used to generate this content (e.g. "1.1.0")
   is_active        Boolean   @default(true)
   created_at       DateTime  @default(now())
 

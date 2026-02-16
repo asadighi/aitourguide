@@ -16,12 +16,24 @@ interface AudioPlayerProps {
   voice?: string;
   /** Auto-play on mount (default: false) */
   autoPlay?: boolean;
+  /**
+   * Called just before this player starts playing.
+   * Use to pause other audio sources (e.g. the global playlist player).
+   */
+  onWillPlay?: () => void;
+  /**
+   * When true, externally pauses this player (e.g. when the global
+   * playlist player resumes). The user can still manually resume.
+   */
+  externalPaused?: boolean;
 }
 
 export function AudioPlayer({
   audioUrl,
   voice,
   autoPlay = false,
+  onWillPlay,
+  externalPaused = false,
 }: AudioPlayerProps) {
   const soundRef = useRef<Audio.Sound | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -47,6 +59,14 @@ export function AudioPlayer({
       }
     };
   }, []);
+
+  // External pause: when another audio source (e.g. global playlist player) starts,
+  // pause this standalone player to avoid competing audio streams.
+  useEffect(() => {
+    if (externalPaused && isPlaying && soundRef.current) {
+      soundRef.current.pauseAsync().catch(() => {});
+    }
+  }, [externalPaused]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load audio
   useEffect(() => {
@@ -124,6 +144,8 @@ export function AudioPlayer({
       if (isPlaying) {
         await soundRef.current.pauseAsync();
       } else {
+        // Pause other audio sources before playing
+        onWillPlay?.();
         await soundRef.current.playAsync();
       }
     } catch (err) {
@@ -135,6 +157,7 @@ export function AudioPlayer({
     if (!soundRef.current || !isLoaded) return;
 
     try {
+      onWillPlay?.();
       await soundRef.current.setPositionAsync(0);
       await soundRef.current.playAsync();
     } catch (err) {

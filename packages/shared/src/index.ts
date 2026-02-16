@@ -9,4 +9,5 @@ export * from "./schemas/error.js";
 export * from "./schemas/clarification.js";
 export * from "./schemas/social-share.js";
 export * from "./schemas/content-safety.js";
+export * from "./locale-accents.js";
 

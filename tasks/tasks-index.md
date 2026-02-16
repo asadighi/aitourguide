@@ -5,7 +5,8 @@ This file links milestone task trackers. Milestones are completed linearly.
 ## milestones
 
 - [x] [tasks-milestone-a.md](tasks-milestone-a.md) Foundation + Core Discovery ✅
-- [ ] [tasks-milestone-b.md](tasks-milestone-b.md) TTS Narration + Multi-Lingual
+- [x] [tasks-milestone-b.md](tasks-milestone-b.md) TTS Narration + Multi-Lingual ✅
+- [x] [tasks-milestone-ba.md](tasks-milestone-ba.md) Snap Queue + Sequential Narration ✅
 - [ ] [tasks-milestone-c.md](tasks-milestone-c.md) Ad Marketplace
 - [ ] [tasks-milestone-d.md](tasks-milestone-d.md) Content Quality Loop
 - [ ] [tasks-milestone-e.md](tasks-milestone-e.md) Social Sharing + Polish
@@ -14,8 +15,8 @@ This file links milestone task trackers. Milestones are completed linearly.
 
 ```json
 {
-  "current_milestone_id": "b",
-  "current_focus_task_id": "B-2"
+  "current_milestone_id": "c",
+  "current_focus_task_id": null
 }
 ```
 

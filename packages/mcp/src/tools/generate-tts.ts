@@ -9,6 +9,11 @@ export interface GenerateTTSInput {
   model?: string;
   /** Playback speed multiplier, 0.25–4.0 (default 1.0) */
   speed?: number;
+  /**
+   * TTS-level instructions for accent/style control.
+   * Only supported by models like gpt-4o-mini-tts.
+   */
+  instructions?: string;
 }
 
 export interface GenerateTTSResult {
@@ -46,14 +51,18 @@ export function validateTTSInput(input: GenerateTTSInput): void {
     );
   }
 
-  const validVoices = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"];
+  // Classic voices + new gpt-4o-mini-tts voices
+  const validVoices = [
+    "alloy", "ash", "ballad", "coral", "echo",
+    "fable", "nova", "onyx", "sage", "shimmer",
+  ];
   if (input.voice && !validVoices.includes(input.voice)) {
     throw new Error(
       `Invalid TTS voice "${input.voice}". Valid voices: ${validVoices.join(", ")}`
     );
   }
 
-  const validModels = ["tts-1", "tts-1-hd"];
+  const validModels = ["tts-1", "tts-1-hd", "gpt-4o-mini-tts"];
   if (input.model && !validModels.includes(input.model)) {
     throw new Error(
       `Invalid TTS model "${input.model}". Valid models: ${validModels.join(", ")}`
@@ -70,12 +79,14 @@ export function buildTTSRequest(input: GenerateTTSInput): {
   voice?: string;
   model?: string;
   speed?: number;
+  instructions?: string;
 } {
   return {
     text: input.text,
     voice: input.voice, // provider fills defaults from env/constructor
     model: input.model,
     speed: input.speed,
+    instructions: input.instructions,
   };
 }
 

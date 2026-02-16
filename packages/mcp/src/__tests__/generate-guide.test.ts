@@ -72,7 +72,7 @@ describe("[milestone-a] generateGuide tool", () => {
     expect(result.data.facts).toHaveLength(3);
     expect(result.data.narration_script).toContain("Eiffel Tower");
     expect(result.model).toBe("gpt-4o-mock");
-    expect(result.promptVersion).toBe("1.0.0");
+    expect(result.promptVersion).toBe("1.1.0");
   });
 
   it("injects locale into the prompt", async () => {
@@ -115,7 +115,55 @@ describe("[milestone-a] generateGuide tool", () => {
 
     expect(capturedPrompt).toContain("fr");
     expect(capturedPrompt).toContain("Colosseum");
+    // Verify dialect hint was injected from locale-accents config
+    expect(capturedPrompt).toContain("Regional Dialect/Accent:");
+    expect(capturedPrompt).toContain("français de France");
     expect(result.data.locale).toBe("fr");
+  });
+
+  it("injects Farsi Tehran dialect hint for 'fa' locale", async () => {
+    let capturedPrompt = "";
+    const provider: LLMProvider = {
+      vision: async (): Promise<LLMResponse> => ({
+        content: "",
+        model: "gpt-4o-mock",
+        latencyMs: 0,
+      }),
+      complete: async (params) => {
+        capturedPrompt = params.userPrompt;
+        return {
+          content: JSON.stringify({
+            schema: "guide_content.v1",
+            landmark_name: "Persepolis",
+            locale: "fa",
+            title: "تخت جمشید",
+            summary: "تخت جمشید پایتخت تشریفاتی هخامنشیان بوده است.",
+            facts: [{ heading: "تاریخ", body: "ساخته شده در حدود ۵۱۸ قبل از میلاد." }],
+            narration_script: "به تخت جمشید خوش آمدید!",
+            fun_fact: null,
+            confidence_note: null,
+          }),
+          model: "gpt-4o-mock",
+          latencyMs: 100,
+        };
+      },
+      tts: async (): Promise<TTSResponse> => ({
+        audioBuffer: Buffer.from(""),
+        model: "tts-1",
+        latencyMs: 0,
+      }),
+    };
+
+    await generateGuide(provider, registry, {
+      landmarkName: "Persepolis",
+      locale: "fa",
+    });
+
+    expect(capturedPrompt).toContain("fa");
+    expect(capturedPrompt).toContain("Tehran");
+    expect(capturedPrompt).toContain("Tehrani");
+    // Must NOT mention Afghan Dari
+    expect(capturedPrompt).toContain("Do NOT use Afghan Dari");
   });
 
   it("includes admin prompt context when provided", async () => {

@@ -83,6 +83,10 @@ export async function processSnap(
 
   const topLandmark = identification.data.landmarks[0];
 
+  // Resolve the current active prompt version for cache invalidation
+  const activeGuidePrompt = registry.getActive("guide_generate");
+  const currentPromptVersion = activeGuidePrompt?.version ?? null;
+
   // Step 3: Check DB for existing landmark + cached guide content
   let dbLandmark = await prisma.landmark.findFirst({
     where: { name: topLandmark.name },
@@ -94,11 +98,15 @@ export async function processSnap(
 
   if (dbLandmark) {
     // Check for cached active guide content in requested locale
+    // Also require prompt_version to match — stale content from older prompts is a cache miss
     const cachedGuide = await prisma.guideContent.findFirst({
       where: {
         landmark_id: dbLandmark.id,
         locale: input.locale,
         is_active: true,
+        ...(currentPromptVersion
+          ? { prompt_version: currentPromptVersion }
+          : {}),
       },
     });
 
@@ -108,6 +116,7 @@ export async function processSnap(
         landmarkId: dbLandmark.id,
         locale: input.locale,
         guideVersion: cachedGuide.version,
+        promptVersion: cachedGuide.prompt_version,
       });
       cached = true;
       guideContentId = cachedGuide.id;
@@ -165,16 +174,40 @@ export async function processSnap(
       });
     }
 
+    // Deactivate any previously active guide for this landmark+locale
+    // (prompt version changed, so old content is stale)
+    if (dbLandmark) {
+      await prisma.guideContent.updateMany({
+        where: {
+          landmark_id: dbLandmark.id,
+          locale: input.locale,
+          is_active: true,
+        },
+        data: { is_active: false },
+      });
+    }
+
+    // Determine next version number for this landmark+locale
+    const prevVersionCount = dbLandmark
+      ? await prisma.guideContent.count({
+          where: {
+            landmark_id: dbLandmark.id,
+            locale: input.locale,
+          },
+        })
+      : 0;
+
     const createdGuide = await prisma.guideContent.create({
       data: {
         landmark_id: dbLandmark.id,
         locale: input.locale,
-        version: 1,
+        version: prevVersionCount + 1,
         title: guideData.title,
         summary: guideData.summary,
         facts: guideData.facts,
         narration_script: guideData.narration_script,
         fun_fact: guideData.fun_fact,
+        prompt_version: guideResult.promptVersion,
         is_active: true,
       },
     });
@@ -189,7 +222,8 @@ export async function processSnap(
         provider,
         guideContentId,
         guideData.narration_script,
-        input.requestId
+        input.requestId,
+        input.locale
       );
       audioResult = {
         audioId: tts.audioId,

@@ -2,7 +2,7 @@ import { PromptRegistry } from "../registry.js";
 import { renderPromptFromRegistry } from "../renderer.js";
 import { validateOutput } from "../validator.js";
 import type { LLMProvider } from "../adapters/types.js";
-import type { GuideContent } from "@aitourguide/shared";
+import { getLocaleAccent, type GuideContent } from "@aitourguide/shared";
 
 export interface GenerateGuideInput {
   landmarkName: string;
@@ -36,10 +36,14 @@ export async function generateGuide(
     ? `Additional guidance from admin: ${input.adminPrompt}`
     : "";
 
+  // Resolve locale-specific dialect hint for authentic accent
+  const accentConfig = getLocaleAccent(input.locale);
+
   // Render prompt with variables and fragments
   const rendered = renderPromptFromRegistry(registry, "guide_generate", {
     landmark_name: input.landmarkName,
     locale: input.locale,
+    dialect_hint: accentConfig.dialectHint,
     admin_prompt_context: adminPromptContext,
   });
 

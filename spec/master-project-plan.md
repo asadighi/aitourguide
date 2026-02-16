@@ -31,6 +31,7 @@ This MVP prioritizes **core landmark discovery accuracy and engagement** over sc
 |---------|------|--------|
 | A | Foundation + Core Discovery | User can snap a photo and see landmark facts on screen |
 | B | TTS Narration + Multi-Lingual | Guide content is narrated via TTS in multiple languages |
+| BA | Snap Queue + Sequential Narration | User can take multiple snaps; results queue and narrations play in order |
 | C | Ad Marketplace | Ad providers submit ads, admins moderate, ads display with landmarks |
 | D | Content Quality Loop | Users rate content, admins regenerate with prompts, versions are tracked |
 | E | Social Sharing + Polish | Users share discoveries to social media with deep platform integration |
@@ -109,6 +110,41 @@ Guide content is narrated aloud via OpenAI TTS in an exciting tour guide tone. U
 - Contract: TTS cache lookup returns audio for known content version
 - Integration: Full snap → content → TTS flow produces audio file
 - Unit: Locale parameter correctly injected into prompts
+
+---
+
+## Milestone BA – Snap Queue + Sequential Narration
+
+### Outcome
+Users can take multiple photos in rapid succession without the camera blocking. Each snap is processed in the background and results accumulate in a playlist. Narrations play sequentially in snap order, with each one announcing the landmark name before the guide content.
+
+### Tasks
+- [ ] Create snap queue data model and state management (queue item types, React context/hook)
+- [ ] Modify camera to dispatch snaps to queue without blocking UI (background processing)
+- [ ] Build playlist screen showing all queued snap results with live status
+- [ ] Implement sequential audio playback across queue with landmark announcements
+
+### UI (Milestone-Scoped)
+- Queue badge on camera showing processing / ready counts
+- Playlist screen with status-aware cards (processing, ready, error, playing)
+- Playlist-level playback controls (play/pause all, skip, previous)
+- Currently-playing item highlighted in playlist
+- Expandable cards to view full landmark results
+
+### Success Criteria
+- User can take multiple snaps without camera blocking
+- Each snap processes in background and joins the queue
+- Narrations play sequentially in snap order
+- Each narration is preceded by a spoken landmark name introduction
+- Error on one snap does not block others
+- Audio continues across screen navigation (camera ↔ playlist)
+
+### Critical Automated Tests
+- Unit: Queue state transitions (pending → processing → ready / error)
+- Unit: Queue maintains FIFO order
+- Unit: Playlist player advances on narration finish and skips errors
+- Integration: Multiple rapid snaps all produce queue items and resolve
+- Unit: Concurrent snap limit prevents API overload
 
 ---
 

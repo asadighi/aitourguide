@@ -2,6 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { prisma } from "../lib/prisma.js";
 import { generateTTS, type LLMProvider } from "@aitourguide/mcp";
+import { getLocaleAccent } from "@aitourguide/shared";
 import { logger } from "../middleware/logger.js";
 
 const AUDIO_DIR = process.env.TTS_AUDIO_DIR || "./audio-cache";
@@ -47,7 +48,8 @@ export async function getOrGenerateTTS(
   provider: LLMProvider,
   guideContentId: string,
   narrationScript: string,
-  requestId?: string
+  requestId?: string,
+  locale?: string
 ): Promise<TTSResult> {
   const log = logger.child({ requestId });
 
@@ -87,15 +89,27 @@ export async function getOrGenerateTTS(
   // Step 2: Generate TTS
   log.info({ event: "tts.generate.start", guideContentId });
 
-  const voice = process.env.TTS_VOICE || "nova";
-  const model = process.env.TTS_MODEL || "tts-1";
+  // Use locale-preferred voice/model, falling back to env/defaults
+  const accentConfig = locale ? getLocaleAccent(locale) : null;
+  const voice = accentConfig?.preferredVoice || process.env.TTS_VOICE || "nova";
+  const model = accentConfig?.preferredModel || process.env.TTS_MODEL || "tts-1";
   const speed = parseFloat(process.env.TTS_SPEED || "1.0");
+
+  log.info({
+    event: "tts.generate.config",
+    guideContentId,
+    locale,
+    voice,
+    model,
+    hasInstructions: !!accentConfig?.ttsInstructions,
+  });
 
   const result = await generateTTS(provider, {
     text: narrationScript,
     voice,
     model,
     speed,
+    instructions: accentConfig?.ttsInstructions,
   });
 
   log.info({

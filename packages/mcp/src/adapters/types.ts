@@ -39,6 +39,12 @@ export interface TTSRequest {
   voice?: string;
   model?: string;
   speed?: number;
+  /**
+   * TTS-level instructions for accent/style control.
+   * Only supported by models like gpt-4o-mini-tts.
+   * Ignored by tts-1 and tts-1-hd.
+   */
+  instructions?: string;
 }
 
 export interface LLMResponse {
